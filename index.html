@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operación Teide Reducción</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#EDF0EE; --surface:#FFFFFF; --surface2:#F4F7F5; --ink:#12201F; --muted:#4C605D; --line:#C7D2CF;
+  --accent:#D13A17; --accent-ink:#FFFFFF; --sea:#0B6E7A; --ok:#0F7A4A; --okbg:#E1F3EA; --bad:#B3261E; --badbg:#FBE7E4;
+  --contour:rgba(11,110,122,.10);
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif; --body:'Figtree','Segoe UI',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1415; --surface:#162022; --surface2:#1C292B; --ink:#E7EFED; --muted:#9BB0AD; --line:#2C3E40;
+    --accent:#FF6A45; --accent-ink:#1A0B07; --sea:#4DC3CF; --ok:#4ADE9A; --okbg:#10291E; --bad:#FF8A80; --badbg:#321716;
+    --contour:rgba(77,195,207,.09);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1415; --surface:#162022; --surface2:#1C292B; --ink:#E7EFED; --muted:#9BB0AD; --line:#2C3E40;
+  --accent:#FF6A45; --accent-ink:#1A0B07; --sea:#4DC3CF; --ok:#4ADE9A; --okbg:#10291E; --bad:#FF8A80; --badbg:#321716;
+  --contour:rgba(77,195,207,.09);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;min-height:100vh;position:relative}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-radial-gradient(circle at 85% -10%,transparent 0 26px,var(--contour) 26px 27.5px),
+             repeating-radial-gradient(circle at 5% 110%,transparent 0 34px,var(--contour) 34px 35.5px)}
+main{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:20px 16px 56px}
+h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--sea);font-weight:600}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:13px 22px;font-weight:600;font-size:17px;min-height:48px}
+.btn:hover{filter:brightness(1.07)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
+.btn.sea{background:var(--sea);color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.sea{color:#06191B}}
+:root[data-theme="dark"] .btn.sea{color:#06191B}
+
+/* intro */
+.hero{padding:36px 0 18px}
+.hero h1{font-size:clamp(40px,10vw,72px);font-weight:800;letter-spacing:-.02em;margin:10px 0 12px}
+.hero h1 span{color:var(--accent)}
+.hero p.lead{font-size:19px;max-width:34em;color:var(--muted);margin:0}
+.panel{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:20px}
+.rules{list-style:none;margin:18px 0;padding:0;display:grid;gap:10px}
+.rules li{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:start}
+.rules b.n{font-family:var(--mono);font-size:13px;background:var(--sea);color:#fff;border-radius:6px;padding:3px 0;text-align:center}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .rules b.n{color:#06191B}}
+:root[data-theme="dark"] .rules b.n{color:#06191B}
+label.f{display:block;font-weight:600;margin:14px 0 6px}
+input.t{width:100%;font:inherit;padding:12px 14px;border-radius:10px;border:2px solid var(--line);background:var(--surface2);color:var(--ink)}
+input.t:focus{border-color:var(--sea);outline:none}
+.err{color:var(--bad);font-weight:600;margin:8px 0 0;min-height:1.4em}
+
+/* play */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:4px 0 10px}
+.score{font-family:var(--mono);font-weight:600;font-size:14px}
+.ticks{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:18px}
+.tick{height:8px;border-radius:4px;background:var(--line)}
+.tick.ok{background:var(--ok)} .tick.rev{background:var(--bad)} .tick.cur{background:var(--accent)}
+.card{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:20px 18px}
+.tagrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tag{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;border:1.5px solid var(--sea);color:var(--sea);padding:3px 9px;border-radius:999px;font-weight:600}
+.tag.step{border-color:var(--accent);color:var(--accent)}
+.story{margin:0 0 14px;font-size:18px}
+.sys{background:var(--surface2);border-left:5px solid var(--accent);border-radius:4px 10px 10px 4px;padding:12px 16px;margin:0 0 16px;font-family:var(--mono);font-size:clamp(18px,5.2vw,24px);font-weight:500;display:grid;gap:4px}
+.sys .ix{color:var(--muted);font-size:.65em;margin-right:10px}
+.prompt{font-family:var(--display);font-weight:700;font-size:21px;margin:6px 0 12px}
+.opts{display:grid;gap:10px;margin:0 0 14px}
+.opt{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;text-align:left;background:var(--surface2);color:var(--ink);border:2px solid var(--line);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:clamp(16px,4.4vw,19px);white-space:pre-line;min-height:48px}
+.opt .l{font-family:var(--display);font-weight:800;font-size:18px;color:var(--sea)}
+.opt[aria-checked="true"]{border-color:var(--accent);background:var(--surface)}
+.opt.wrong{opacity:.55;text-decoration:line-through;border-style:dashed;cursor:not-allowed}
+.opt.right{border-color:var(--ok);background:var(--okbg)}
+.vars{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 14px}
+.var{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:20px}
+.var .lab{min-width:1.2em;font-weight:600}
+.var input{width:96px;font:inherit;font-size:20px;text-align:center;padding:10px 6px;border:2px solid var(--line);border-radius:10px;background:var(--surface2);color:var(--ink)}
+.var input:focus{border-color:var(--sea);outline:none}
+.var .sg{background:var(--surface2);color:var(--ink);border:2px solid var(--line);border-radius:10px;width:44px;height:48px;font-size:20px;font-family:var(--mono)}
+.var small{display:block;font-family:var(--body);font-size:13px;color:var(--muted)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.fb{margin-top:16px;border-radius:10px;padding:12px 14px;border:2px solid;font-size:16px}
+.fb.good{background:var(--okbg);border-color:var(--ok)} .fb.bad{background:var(--badbg);border-color:var(--bad)} .fb.info{background:var(--surface2);border-color:var(--sea)}
+.fb strong{font-family:var(--display);font-size:18px;display:block;margin-bottom:2px}
+.fb .ex{font-family:var(--mono);font-size:15px;margin-top:6px;white-space:pre-wrap}
+.hint{margin-top:12px;font-size:15px;color:var(--muted);border-top:1.5px dashed var(--line);padding-top:10px}
+.linkbtn{background:none;border:0;color:var(--sea);text-decoration:underline;padding:8px 0;font-weight:600;min-height:44px}
+
+/* end */
+.big{font-family:var(--display);font-weight:800;font-size:clamp(44px,12vw,80px);line-height:1}
+.big small{font-size:.35em;color:var(--muted);font-weight:600}
+.sum{display:grid;gap:8px;margin:16px 0}
+.sumrow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:10px;font-size:16px}
+.sumrow b{font-family:var(--mono)}
+.review{margin-top:14px;display:grid;gap:6px;font-size:15px}
+.rv{display:grid;grid-template-columns:auto 1fr auto;gap:8px;font-family:var(--mono);font-size:14px;padding:6px 0;border-bottom:1px solid var(--line)}
+.rv .s-ok{color:var(--ok);font-weight:600} .rv .s-rev{color:var(--bad);font-weight:600}
+.note{font-size:15px;color:var(--muted);margin:12px 0 0}
+.rub{display:grid;gap:10px;margin-top:18px}
+.rub h2{font-size:24px;margin:6px 0 2px}
+.rr{background:var(--surface2);border-radius:10px;padding:12px 14px;border-left:5px solid var(--line)}
+.rr.l0{border-color:var(--bad)} .rr.l1{border-color:#C98A12} .rr.l2{border-color:var(--sea)} .rr.l3{border-color:var(--ok)}
+.rr .hd{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.rr b.nm{font-family:var(--display);font-size:17px}
+.rr .cd{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.rr .lv{font-family:var(--mono);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.rr p{margin:4px 0 0;font-size:15px}
+.rr .res{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.glob{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:2px solid var(--sea);border-radius:10px;padding:12px 14px;font-weight:600}
+@media (prefers-reduced-motion:no-preference){
+  .panel{animation:rise .35s ease-out}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+@media (max-width:420px){ body{font-size:16px} .card{padding:16px 14px} .var input{width:84px} }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+/*GEN-START*/
+let R=Math.random;
+function hash(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return(h^h>>>16)>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const rnd=(a,b)=>Math.floor(R()*(b-a+1))+a;
+const pick=a=>a[rnd(0,a.length-1)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]];}return a;};
+const nz=(a,b)=>{let v;do v=rnd(a,b);while(v===0);return v;};
+const num=c=>String(c).replace('-','−');
+function lin(terms){
+  let s='';
+  terms.forEach(([c,v])=>{
+    if(c===0)return;
+    const ab=Math.abs(c);
+    const body=v?(ab===1?v:ab+v):String(ab);
+    if(!s)s=(c<0?'−':'')+body; else s+=(c<0?' − ':' + ')+body;
+  });
+  return s||'0';
+}
+const eqStr=(a,b,c)=>lin([[a,'x'],[b,'y']])+' = '+num(c);
+const sat=(r,x,y)=>r.a*x+r.b*y===r.c;
+const elim=(m1,a1,m2,a2,op)=>m1*a1+(op==='+'?1:-1)*m2*a2===0;
+function opText(m1,m2,op){
+  const mult=[];if(m1!==1)mult.push(`(1) por ${m1}`);if(m2!==1)mult.push(`(2) por ${m2}`);
+  if(!mult.length)return op==='+'?'Sumar las dos ecuaciones':'Restar la ecuación (2) a la (1)';
+  return `Multiplicar ${mult.join(' y ')} y después ${op==='+'?'sumar':'restar'} las ecuaciones`;
+}
+
+function genRed(level){
+  for(;;){
+    const x0=nz(-5,5),y0=nz(-5,5);
+    const v=pick(['x','y']),w=v==='x'?'y':'x';
+    let a1,a2,corr;
+    if(level===1){
+      a1=nz(-4,4);const same=pick([true,false]);a2=same?a1:-a1;corr={m1:1,m2:1,op:same?'-':'+'};
+    }else if(level===2){
+      const m=pick([2,3]),sg=pick([1,-1]),b=nz(-3,3),flip=pick([true,false]);
+      if(flip){a1=sg*m*b;a2=b;corr={m1:1,m2:m,op:sg===1?'-':'+'};}
+      else{a1=b;a2=sg*m*b;corr={m1:m,m2:1,op:sg===1?'-':'+'};}
+    }else{
+      const [p,q]=pick([[2,3],[3,2],[3,4],[4,3],[2,5],[5,2]]),s1=pick([1,-1]),s2=pick([1,-1]);
+      a1=s1*p;a2=s2*q;corr={m1:q,m2:p,op:s1===s2?'-':'+'};
+    }
+    if(!elim(corr.m1,a1,corr.m2,a2,corr.op))continue;
+    const b1=nz(-5,5),b2=nz(-5,5);
+    const sign=corr.op==='+'?1:-1;
+    const K=corr.m1*b1+sign*corr.m2*b2;
+    if(K===0||Math.abs(K)>30)continue;
+    const e1=v==='x'?{a:a1,b:b1}:{a:b1,b:a1};
+    const e2=v==='x'?{a:a2,b:b2}:{a:b2,b:a2};
+    e1.c=e1.a*x0+e1.b*y0;e2.c=e2.a*x0+e2.b*y0;
+    if(e1.c===0||e2.c===0)continue;
+    const sol={x:x0,y:y0};
+    const rhs=corr.m1*e1.c+sign*corr.m2*e2.c;
+    const cand=[];
+    const push=(m1,m2,op)=>{
+      if(m1===corr.m1&&m2===corr.m2&&op===corr.op)return;
+      if(elim(m1,a1,m2,a2,op))return;
+      if(cand.some(c=>c.m1===m1&&c.m2===m2&&c.op===op))return;
+      cand.push({m1,m2,op});
+    };
+    const other=corr.op==='+'?'-':'+';
+    push(corr.m1,corr.m2,other);push(corr.m2,corr.m1,corr.op);push(corr.m2,corr.m1,other);
+    push(1,1,'+');push(1,1,'-');
+    for(let i=1;i<=5&&cand.length<8;i++)for(let j=1;j<=5&&cand.length<8;j++)push(i,j,pick(['+','-']));
+    const chosen=shuffle(cand).slice(0,3);
+    const opts=shuffle([{...corr,ok:true},...chosen.map(c=>({...c,ok:false}))]);
+    return {
+      kind:0,level,rows:[e1,e2],
+      meta:{a1,a2,opts:opts.map(o=>({m1:o.m1,m2:o.m2,op:o.op,ok:o.ok}))},
+      statement:{lines:[eqStr(e1.a,e1.b,e1.c),eqStr(e2.a,e2.b,e2.c)]},
+      stages:[
+        {type:'mc',prompt:`¿Qué operación elimina la incógnita ${v}?`,options:opts.map(o=>opText(o.m1,o.m2,o.op)),correct:opts.findIndex(o=>o.ok),
+         hint:`Para eliminar ${v}, sus coeficientes deben quedar iguales (y se restan) u opuestos (y se suman). Los coeficientes de ${v} son ${num(a1)} y ${num(a2)}.`,
+         explain:`${opText(corr.m1,corr.m2,corr.op)}: los términos en ${v} se anulan.`},
+        {type:'sol',prompt:'Aplica esa operación, resuelve y escribe la solución del sistema.',vars:[{name:'x',answer:x0},{name:'y',answer:y0}],
+         hint:`Tras eliminar ${v} te queda una ecuación solo con ${w}. Resuélvela y sustituye en una de las ecuaciones originales para hallar ${v}.`,
+         explain:`Queda ${lin([[K,w]])} = ${num(rhs)}, de donde ${w} = ${num(sol[w])}. Sustituyendo, ${v} = ${num(sol[v])}.\nSolución: x = ${num(x0)}, y = ${num(y0)}`}
+      ]};
+  }
+}
+
+const pl=(n,a,b)=>n+' '+(n===1?a:b);
+function genProblem(){
+  for(;;){
+    const x0=rnd(2,7),y0=rnd(1,5);
+    const a1=rnd(1,4),b1=rnd(1,4),a2=rnd(1,4),b2=rnd(1,4);
+    if(a1*b2-a2*b1===0)continue;
+    if(a1===a2&&b1===b2)continue;
+    const c1=a1*x0+b1*y0,c2=a2*x0+b2*y0;
+    const st=pick([
+      {t:`En una excursión al Teide, el grupo A compra ${pl(a1,'bocadillo','bocadillos')} y ${pl(b1,'refresco','refrescos')} por ${c1} €. El grupo B compra ${pl(a2,'bocadillo','bocadillos')} y ${pl(b2,'refresco','refrescos')} por ${c2} €. Sea x el precio de un bocadillo e y el de un refresco (en euros).`,n:{x:'precio del bocadillo',y:'precio del refresco'}},
+      {t:`En la tienda del Observatorio, un visitante compra ${pl(a1,'camiseta','camisetas')} y ${pl(b1,'gorra','gorras')} por ${c1} €. Otro compra ${pl(a2,'camiseta','camisetas')} y ${pl(b2,'gorra','gorras')} por ${c2} €. Sea x el precio de una camiseta e y el de una gorra (en euros).`,n:{x:'precio de la camiseta',y:'precio de la gorra'}},
+      {t:`Para el cuaderno de campo, el equipo 1 compra ${pl(a1,'cuaderno','cuadernos')} y ${pl(b1,'lápiz','lápices')} por ${c1} €. El equipo 2 compra ${pl(a2,'cuaderno','cuadernos')} y ${pl(b2,'lápiz','lápices')} por ${c2} €. Sea x el precio de un cuaderno e y el de un lápiz (en euros).`,n:{x:'precio del cuaderno',y:'precio del lápiz'}}
+    ]);
+    const good=[{a:a1,b:b1,c:c1},{a:a2,b:b2,c:c2}];
+    const bad=[
+      [{a:b1,b:a1,c:c1},{a:a2,b:b2,c:c2}],
+      [{a:a1,b:b1,c:c2},{a:a2,b:b2,c:c1}],
+      [{a:a1,b:b1,c:c1},{a:a2,b:b2,c:c1+c2}],
+      [{a:a1,b:-b1,c:c1},{a:a2,b:-b2,c:c2}],
+      [{a:b1,b:a1,c:c1},{a:b2,b:a2,c:c2}]
+    ].filter(sys=>!sys.every(r=>sat(r,x0,y0)));
+    const seen=new Set(),bads=[];
+    const fmt=sys=>sys.map(r=>eqStr(r.a,r.b,r.c)).join('\n');
+    bad.forEach(b=>{const f=fmt(b);if(f!==fmt(good)&&!seen.has(f)){seen.add(f);bads.push(b);}});
+    if(bads.length<3)continue;
+    const opts=shuffle([{t:fmt(good),ok:true},...shuffle(bads).slice(0,3).map(b=>({t:fmt(b),ok:false}))]);
+    return {
+      kind:1,rows:good,meta:{sol:{x:x0,y:y0},bads:bads.slice(0,3)},
+      statement:{story:st.t},
+      stages:[
+        {type:'mc',prompt:'¿Qué sistema plantea correctamente el problema?',options:opts.map(o=>o.t),correct:opts.findIndex(o=>o.ok),
+         hint:'Escribe una ecuación por cada compra: número de artículos de cada tipo por su precio, igual al total pagado.',
+         explain:fmt(good)},
+        {type:'sol',prompt:'Resuelve el sistema (te conviene la reducción) y escribe el precio de cada artículo.',
+         vars:[{name:'x',answer:x0,note:st.n.x+' (€)'},{name:'y',answer:y0,note:st.n.y+' (€)'}],
+         hint:'Multiplica las ecuaciones por los números adecuados para igualar los coeficientes de una incógnita y resta. Después sustituye.',
+         explain:`x = ${x0} € (${st.n.x}), y = ${y0} € (${st.n.y}).`}
+      ]};
+  }
+}
+
+function genGame(){return [genRed(1),genRed(2),genRed(3),genProblem()];}
+/*GEN-END*/
+
+const EXP=['Reducción','Problema'];
+const MAXA={mc:2,sol:3};
+const app=document.getElementById('app');
+const NQ=4;
+let S={screen:'intro',name:'',group:'',qs:[],qi:0,si:0,sel:null,fb:null,hint:false};
+
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const curQ=()=>S.qs[S.qi], curSt=()=>curQ().stages[S.si];
+function ensureLogs(q){ if(!q.logs)q.logs=q.stages.map(()=>({attempts:[],status:null,hint:false})); }
+function correctText(st){
+  if(st.type==='mc')return String.fromCharCode(65+st.correct)+') '+st.options[st.correct].replace(/\n/g,'   /   ');
+  return st.vars.map(v=>v.name+' = '+num(v.answer)).join(' ;  ');
+}
+
+const SK='teide-red-v1:';
+const normName=n=>n.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'');
+function save(){try{localStorage.setItem(SK+S.key,JSON.stringify({qi:S.qi,si:S.si,screen:S.screen,logs:S.qs.map(q=>q.logs)}));localStorage.setItem(SK+'last',JSON.stringify({name:S.name,group:S.group}));}catch(e){}}
+function load(){try{const r=JSON.parse(localStorage.getItem(SK+S.key));return r&&Array.isArray(r.logs)&&r.logs.length===NQ?r:null;}catch(e){return null;}}
+function start(){
+  const h=hash(normName(S.name));S.key=String(h);
+  R=mulberry32(h);S.qs=genGame();R=Math.random;S.qs.forEach(ensureLogs);
+  S.qi=0;S.si=0;S.sel=null;S.fb=null;S.hint=false;S.screen='play';
+  const sv=load();
+  if(sv){S.qs.forEach((q,i)=>{if(sv.logs[i]&&sv.logs[i].length===2)q.logs=sv.logs[i];});S.qi=sv.qi;S.si=sv.si;S.screen=sv.screen==='end'?'end':'play';}
+  save();render();
+}
+
+function render(){
+  if(S.screen==='intro')renderIntro();
+  else if(S.screen==='play')renderPlay();
+  else renderEnd();
+  const f=app.querySelector('[data-focus]'); if(f&&S.screen!=='end')try{f.focus({preventScroll:false});}catch(e){}
+}
+
+function renderIntro(){
+  app.innerHTML=`
+  <section class="hero">
+    <div class="eyebrow">Ficha de campo · 3º ESO Matemáticas</div>
+    <h1>Operación <span>Teide</span>: reducción</h1>
+    <p class="lead">Practica el método de reducción y resuelve un problema con un sistema de ecuaciones. Dura unos 30 minutos y al final descargas tu informe en PDF.</p>
+  </section>
+  <section class="panel">
+    <ul class="rules">
+      <li><b class="n">4</b><span>pruebas: tres sistemas para resolver por reducción (de fácil a más difícil) y un problema. Cada prueba tiene 2 pasos.</span></li>
+      <li><b class="n">!</b><span>Puedes equivocarte: tienes varios intentos y pistas. Pero tienes que contestar cada paso antes de avanzar.</span></li>
+      <li><b class="n">PDF</b><span>Al final se genera un informe con tus respuestas y una evaluación para subir a Classroom.</span></li>
+    </ul>
+    <label class="f" for="nm">Nombre y apellidos</label>
+    <input class="t" id="nm" data-focus autocomplete="name" value="${esc(S.name)}">
+    <label class="f" for="gr">Curso y grupo</label>
+    <input class="t" id="gr" placeholder="3º ESO C" value="${esc(S.group)}">
+    <p class="err" id="e"></p>
+    <button class="btn" id="go">Empezar misión</button>
+    <p class="note">Tus ejercicios son siempre los mismos. Si cierras la página y vuelves a entrar con el mismo nombre, continúas donde lo dejaste (en el mismo dispositivo).</p>
+  </section>`;
+  const go=()=>{
+    S.name=document.getElementById('nm').value.trim(); S.group=document.getElementById('gr').value.trim();
+    if(S.name.length<3){document.getElementById('e').textContent='Escribe tu nombre y apellidos para el informe.';document.getElementById('nm').focus();return;}
+    start();
+  };
+  document.getElementById('go').onclick=go;
+  app.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter')go();}));
+}
+
+function ticks(){
+  return `<div class="ticks" aria-hidden="true">`+S.qs.map((q,i)=>{
+    const l=q.logs;let c='';
+    if(i===S.qi)c='cur';
+    else if(l.every(x=>x.status)) c=l.some(x=>x.status==='revealed')?'rev':'ok';
+    return `<div class="tick ${c}"></div>`;
+  }).join('')+`</div>`;
+}
+
+function renderPlay(){
+  const q=curQ(),st=curSt(),lg=q.logs[S.si],done=!!lg.status;
+  const sys=q.statement.lines
+    ?`<div class="sys" role="group" aria-label="Sistema de ecuaciones">${q.statement.lines.map((l,i)=>`<div><span class="ix">(${i+1})</span>${esc(l)}</div>`).join('')}</div>`
+    :`<p class="story">${esc(q.statement.story)}</p>`;
+  let body='';
+  if(st.type==='mc'){
+    body=`<div class="opts" role="radiogroup" aria-label="Opciones">`+st.options.map((o,i)=>{
+      const tried=lg.attempts.some(a=>a.idx===i);
+      const cls=(tried&&!lg.attempts.find(a=>a.idx===i).ok)?'wrong':(done&&i===st.correct?'right':'');
+      return `<button class="opt ${cls}" role="radio" aria-checked="${S.sel===i}" data-i="${i}" ${(tried&&cls==='wrong')||done?'disabled':''}><span class="l">${String.fromCharCode(65+i)}</span><span>${esc(o)}</span></button>`;
+    }).join('')+`</div>`;
+  }else{
+    body=`<div class="vars">`+st.vars.map((v,i)=>`
+      <label class="var"><span class="lab">${v.name} =</span>
+        <button type="button" class="sg" data-sg="${i}" aria-label="Cambiar signo de ${v.name}">±</button>
+        <span><input id="v${i}" inputmode="text" autocomplete="off" aria-label="Valor de ${v.name}" ${done?'disabled':''} ${i===0?'data-focus':''}>${v.note?`<small>${esc(v.note)}</small>`:''}</span></label>`).join('')+`</div>`;
+  }
+  const left=MAXA[st.type]-lg.attempts.length;
+  const fb=S.fb?`<div class="fb ${S.fb.k}" role="status"><strong>${esc(S.fb.t)}</strong>${esc(S.fb.m||'')}${S.fb.ex?`<div class="ex">${esc(S.fb.ex)}</div>`:''}</div>`:'';
+  const last=S.qi===NQ-1&&S.si===1;
+  const label=q.kind===0?`Parte A · Reducción · nivel ${q.level}`:'Parte B · Problema';
+  app.innerHTML=`
+  <div class="top"><span class="eyebrow">Prueba ${S.qi+1} de ${NQ}</span><span class="score">Paso ${S.qi*2+S.si+1} de ${NQ*2}</span></div>
+  ${ticks()}
+  <section class="card">
+    <div class="tagrow"><span class="tag">${label}</span><span class="tag step">Paso ${S.si+1} de 2</span></div>
+    ${sys}
+    <div class="prompt">${esc(st.prompt)}</div>
+    ${body}
+    <div class="actions">
+      ${done?'':`<button class="btn" id="chk" ${st.type==='mc'&&S.sel===null?'disabled':''}>Comprobar</button>`}
+      ${done?`<button class="btn sea" id="nxt" data-focus>${last?'Ver mi informe':S.si===0?'Siguiente paso':'Siguiente prueba'}</button>`:''}
+      ${!done&&!S.hint?`<button class="linkbtn" id="hnt">Necesito una pista</button>`:''}
+    </div>
+    ${!done?`<div class="note">Intentos disponibles: ${left}</div>`:''}
+    ${S.hint&&!done?`<div class="hint"><b>Pista:</b> ${esc(st.hint)}</div>`:''}
+    ${fb}
+  </section>`;
+  if(st.type==='mc'){
+    app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{S.sel=+b.dataset.i;S.fb=null;renderKeep();});
+  }else{
+    app.querySelectorAll('.sg').forEach(b=>b.onclick=()=>{const inp=document.getElementById('v'+b.dataset.sg);let t=inp.value.trim();inp.value=t.startsWith('-')||t.startsWith('−')?t.slice(1):'-'+t;inp.focus();});
+    app.querySelectorAll('.vars input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter'){const c=document.getElementById('chk');c&&c.click();}}));
+  }
+  const chk=document.getElementById('chk'); if(chk)chk.onclick=check;
+  const h=document.getElementById('hnt'); if(h)h.onclick=()=>{S.hint=true;lg.hint=true;save();renderKeep();};
+  const n=document.getElementById('nxt'); if(n)n.onclick=next;
+}
+function renderKeep(){
+  const vals=[...app.querySelectorAll('.vars input')].map(i=>i.value);
+  renderPlay();
+  app.querySelectorAll('.vars input').forEach((i,k)=>{i.value=vals[k]||'';});
+}
+
+function check(){
+  const q=curQ(),st=curSt(),lg=q.logs[S.si];
+  let ok,text,extra={};
+  if(st.type==='mc'){
+    if(S.sel===null)return;
+    ok=S.sel===st.correct;
+    text=String.fromCharCode(65+S.sel)+') '+st.options[S.sel].replace(/\n/g,'   /   ');
+    extra.idx=S.sel;
+  }else{
+    const raw=st.vars.map((v,i)=>document.getElementById('v'+i).value);
+    const vals=raw.map(r=>r.trim().replace('−','-').replace(',','.'));
+    if(vals.some(v=>!/^-?\d+(\.\d+)?$/.test(v))){S.fb={k:'info',t:'Escribe un número en cada casilla.',m:'Puedes usar el botón ± para el signo. Este intento no cuenta.'};renderKeep();return;}
+    ok=st.vars.every((v,i)=>Number(vals[i])===v.answer);
+    text=st.vars.map((v,i)=>v.name+' = '+num(vals[i])).join(' ;  ');
+  }
+  lg.attempts.push({text,ok,...extra});
+  const n=lg.attempts.length;
+  if(ok){
+    lg.status=n===1?'ok1':'ok';
+    S.fb={k:'good',t:n===1?'¡Correcto a la primera!':'¡Correcto!',m:'',ex:st.explain};
+  }else if(n>=MAXA[st.type]){
+    lg.status='revealed';
+    S.fb={k:'bad',t:'Sin intentos. Esta es la solución:',m:'Léela con calma para entender el camino; en la siguiente prueba lo harás mejor.',ex:(st.type==='mc'?correctText(st)+'\n':'')+st.explain};
+  }else{
+    S.fb={k:'bad',t:'Todavía no es correcto.',m:`Revisa tu razonamiento y prueba otra vez. Te quedan ${MAXA[st.type]-n} intento${MAXA[st.type]-n>1?'s':''}.`};
+  }
+  S.sel=null;save();
+  renderPlay();
+  if(lg.status){const nx=document.getElementById('nxt');nx&&nx.focus();}
+}
+
+function next(){
+  S.fb=null;S.hint=false;S.sel=null;
+  if(S.si===0){S.si=1;}
+  else if(S.qi<NQ-1){S.qi++;S.si=0;}
+  else{S.screen='end';}
+  save();render();window.scrollTo(0,0);
+}
+
+/* ---------- rúbrica ---------- */
+const LV=['Insuficiente','Suficiente','Notable','Sobresaliente'];
+const lvl=r=>r>=.85?3:r>=.65?2:r>=.4?1:0;
+const val=l=>l.status==='ok1'?1:l.status==='ok'?(l.attempts.length===2?.6:.3):0;
+function wr(sel){let a=0,n=0;S.qs.forEach(q=>q.logs.forEach((l,j)=>{if(sel(q,j)){a+=val(l);n++;}}));return n?a/n:0;}
+const RUB=[
+ {code:'MAT 1.1',name:'Interpretar y modelizar el problema',d:[
+  'No identifica el sistema que modeliza el problema y no obtiene la solución.',
+  'Identifica el sistema tras varios intentos y resuelve con dificultad.',
+  'Plantea y resuelve el problema; corrige algún error por el camino.',
+  'Plantea el sistema y resuelve el problema correctamente, a la primera.']},
+ {code:'MAT 1.3',name:'Elegir la operación de reducción',d:[
+  'No identifica qué operación elimina la incógnita; necesita ver la respuesta.',
+  'Elige la operación adecuada solo en los casos más sencillos y tras varios intentos.',
+  'Elige la operación adecuada en la mayoría de los casos, con algún error corregido.',
+  'Elige siempre la operación que elimina la incógnita, casi siempre a la primera.']},
+ {code:'MAT 1.3',name:'Calcular las soluciones',d:[
+  'No obtiene las soluciones de los sistemas; necesita ver las respuestas.',
+  'Obtiene alguna solución, con errores frecuentes de signos o de cálculo.',
+  'Obtiene las soluciones con algún error de signos o cálculo que corrige.',
+  'Obtiene las soluciones con precisión, casi siempre a la primera.']},
+ {code:'MAT 9.2',name:'Perseverar y aprender del error',d:[
+  'Tras equivocarse no corrige: en casi todos los errores se le muestra la solución.',
+  'Reconoce y corrige solo algunos de sus errores al reintentar.',
+  'Reconoce y corrige la mayoría de sus errores revisando el procedimiento.',
+  'Reconoce y corrige todos o casi todos sus errores, o no comete errores relevantes.']}
+];
+function rubric(){
+  const out=[];const pct=r=>Math.round(100*r)+' % de acierto';
+  let r=wr(q=>q.kind===1);out.push({...RUB[0],lv:lvl(r),res:pct(r)});
+  r=wr((q,j)=>q.kind===0&&j===0);out.push({...RUB[1],lv:lvl(r),res:pct(r)});
+  r=wr((q,j)=>q.kind===0&&j===1);out.push({...RUB[2],lv:lvl(r),res:pct(r)});
+  let e=0,c=0;
+  S.qs.forEach(q=>q.logs.forEach(l=>{if(l.attempts.some(a=>!a.ok)){e++;if(l.status!=='revealed')c++;}}));
+  out.push({...RUB[3],lv:e?lvl(c/e):3,res:e?c+' de '+e+' errores corregidos':'Sin errores'});
+  const m=out.reduce((a,x)=>a+x.lv,0)/out.length;
+  return {rows:out,global:LV[Math.round(m)]};
+}
+
+/* ---------- informe ---------- */
+function stats(){
+  const o=[{k:0,ok:0,n:0},{k:1,ok:0,n:0}];
+  S.qs.forEach(q=>q.logs.forEach(l=>{const t=o[q.kind];t.n++;if(l.status==='ok1'||l.status==='ok')t.ok++;}));
+  return o;
+}
+function renderEnd(){
+  const st=stats(),R2=rubric();
+  const okTot=st[0].ok+st[1].ok,nTot=st[0].n+st[1].n;
+  app.innerHTML=`
+  <section class="hero" style="padding-top:24px">
+    <div class="eyebrow">Informe de misión · ${esc(S.name)}</div>
+    <div class="big">${okTot}<small> / ${nTot} pasos resueltos</small></div>
+    <p class="lead" style="margin-top:8px">Misión terminada. Descarga el informe y entrégalo en Classroom.</p>
+  </section>
+  <section class="panel">
+    <div class="sum">
+      <div class="sumrow"><span>Parte A · Reducción</span><b>${st[0].ok}/${st[0].n} pasos</b></div>
+      <div class="sumrow"><span>Parte B · Problema</span><b>${st[1].ok}/${st[1].n} pasos</b></div>
+    </div>
+    <div class="actions"><button class="btn" id="pdf">Descargar informe en PDF</button></div>
+    <p class="err" id="e" role="status"></p>
+    <p class="note" style="margin-top:0">Sube el PDF descargado a la tarea de Classroom. El informe contiene tus preguntas, todos tus intentos, las soluciones y tu evaluación.</p>
+    <div class="rub"><h2>Evaluación por rúbrica</h2>
+      ${R2.rows.map(x=>`<div class="rr l${x.lv}"><div class="hd"><b class="nm">${esc(x.name)} <span class="cd">${esc(x.code)}</span></b><span class="lv">${LV[x.lv]}</span></div><p>${esc(x.d[x.lv])}</p><div class="res">${esc(x.res)}</div></div>`).join('')}
+      <div class="glob"><span>Nivel global: ${R2.global}</span></div>
+    </div>
+    <div class="review">${S.qs.map((q,i)=>q.logs.map((l,j)=>`<div class="rv"><span>${i+1}.${j+1}</span><span>${q.kind===0?'Reducción · nivel '+q.level:'Problema'} · ${j?'resolver':(q.kind===0?'operación':'planteamiento')}</span><span class="${l.status==='revealed'?'s-rev':'s-ok'}">${l.status==='revealed'?'revisar':'ok'}</span></div>`).join('')).join('')}</div>
+  </section>`;
+  document.getElementById('pdf').onclick=download;
+}
+
+const lat=t=>String(t).replace(/[−–—]/g,'-').replace(/→/g,'->').replace(/€/g,' euros').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/…/g,'...').replace(/±/g,'+/-').replace(/[^\x00-\xFF]/g,'?');
+function buildPDF(){
+  const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'});
+  const M=16,CW=178;let y=0;
+  const col={ink:[18,32,31],mut:[76,96,93],ok:[15,122,74],bad:[179,38,30],acc:[209,58,23],dark:[20,32,31]};
+  function add(str,o={}){
+    const size=o.size||10,lh=size*0.46+0.9;
+    doc.setFont('helvetica',o.bold?'bold':(o.mono?'courier':'normal'));doc.setFontSize(size);doc.setTextColor(...(o.color||col.ink));
+    doc.splitTextToSize(lat(str),CW-(o.indent||0)).forEach(l=>{
+      if(y>280){doc.addPage();y=18;}
+      doc.text(l,M+(o.indent||0),y);y+=lh;
+    });
+    y+=(o.after||0);
+  }
+  const now=new Date();
+  const fecha=now.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  doc.setFillColor(...col.dark);doc.rect(0,0,210,34,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('Operacion Teide - Informe de reduccion',M,16);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text('Metodo de reduccion y resolucion de un problema  |  3º ESO Matematicas',M,25);
+  y=44;
+  add('Alumno/a: '+S.name,{bold:true,size:12});
+  add('Curso y grupo: '+(S.group||'-')+'      Fecha: '+fecha,{size:10,color:col.mut,after:1});
+  const st=stats();
+  add('Parte A (Reduccion): '+st[0].ok+'/'+st[0].n+' pasos correctos',{size:10});
+  add('Parte B (Problema): '+st[1].ok+'/'+st[1].n+' pasos correctos',{size:10});
+  y+=3;
+  (function(){
+    const Rb=rubric(),cw=[38,35,35,35,35],T=7.5;
+    add('Evaluacion por rubrica (criterios observables en la actividad)',{bold:true,size:11.5,color:col.acc,after:1});
+    doc.setFontSize(T);
+    let x=M;doc.setFillColor(...col.dark);doc.setDrawColor(...col.mut);doc.setLineWidth(0.2);
+    ['Criterio',...LV].forEach((t,i)=>{doc.rect(x,y,cw[i],6,'FD');doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);doc.text(lat(t),x+1.5,y+4.1);x+=cw[i];});
+    y+=6;
+    Rb.rows.forEach(r=>{
+      const cells=[null,...r.d].map((t,i)=>doc.splitTextToSize(lat(i===0?r.name+' ('+r.code+')':t),cw[i]-3));
+      const resL=doc.splitTextToSize(lat('Resultado: '+r.res),cw[0]-3);
+      const lines=Math.max(cells[0].length+resL.length,...cells.slice(1).map(c=>c.length));
+      const h=lines*3.3+3;
+      if(y+h>285){doc.addPage();y=18;}
+      x=M;
+      for(let i=0;i<5;i++){
+        const hit=i===r.lv+1;
+        doc.setFillColor(...(hit?[205,235,219]:[255,255,255]));doc.setDrawColor(...col.mut);
+        doc.rect(x,y,cw[i],h,'FD');
+        doc.setFont('helvetica',(hit||i===0)?'bold':'normal');doc.setFontSize(T);doc.setTextColor(...(i===0?col.ink:hit?col.ok:col.mut));
+        doc.text(cells[i],x+1.5,y+3.6);
+        if(i===0){doc.setFont('helvetica','normal');doc.setTextColor(...col.mut);doc.text(resL,x+1.5,y+3.6+cells[0].length*3.3);}
+        x+=cw[i];
+      }
+      y+=h;
+    });
+    y+=4;
+    add('Nivel global de logro: '+Rb.global,{bold:true,size:10.5,after:1});
+    add('Observaciones del docente: ________________________________________________________________',{size:9,color:col.mut,after:1});
+    add('______________________________________________________________________________________________',{size:9,color:col.mut});
+  })();
+  y+=3;
+  S.qs.forEach((q,i)=>{
+    if(y>235){doc.addPage();y=18;}
+    doc.setDrawColor(...col.acc);doc.setLineWidth(0.5);doc.line(M,y,M+CW,y);y+=5;
+    add('Prueba '+(i+1)+' - '+(q.kind===0?'Parte A: Reduccion (nivel '+q.level+')':'Parte B: Problema'),{bold:true,size:11.5,color:col.acc,after:1});
+    if(q.statement.lines)q.statement.lines.forEach((l,k)=>add('('+(k+1)+')  '+l,{mono:true,size:11,indent:3}));
+    else add(q.statement.story,{size:10,indent:3});
+    y+=1.5;
+    q.stages.forEach((st,j)=>{
+      const lg=q.logs[j];
+      if(y>250){doc.addPage();y=18;}
+      add('Paso '+(j+1)+': '+st.prompt,{bold:true,size:10,after:0.5});
+      lg.attempts.forEach((a,k)=>add('Intento '+(k+1)+':  '+a.text+'   ->   '+(a.ok?'CORRECTO':'INCORRECTO'),{size:9.5,indent:4,color:a.ok?col.ok:col.bad}));
+      if(!lg.attempts.length)add('Sin respuesta.',{size:9.5,indent:4,color:col.bad});
+      if(lg.status==='revealed'){
+        add('Respuesta correcta: '+correctText(st).replace(/\n/g,' / '),{size:9.5,indent:4,color:col.mut});
+        add('Resolucion: '+st.explain.replace(/\n/g,' '),{size:9,indent:4,color:col.mut});
+      }
+      add('Pista usada: '+(lg.hint?'si':'no'),{size:9,indent:4,color:col.mut,after:2});
+    });
+    y+=2;
+  });
+  const n=doc.getNumberOfPages();
+  for(let p=1;p<=n;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(120,130,128);
+    doc.text(lat('Operacion Teide (reduccion) - '+S.name+' - pagina '+p+' de '+n),M,291);}
+  return doc;
+}
+async function download(){
+  const e=document.getElementById('e');e.style.color='';e.textContent='';
+  let doc;
+  try{doc=buildPDF();}catch(err){e.textContent='No se pudo crear el PDF: '+err.message;return;}
+  const blob=doc.output('blob');
+  const slug=lat(S.name).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,40)||'alumno';
+  const filename='Reduccion_Teide_'+slug+'.pdf';
+  let dl=null;
+  try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null;}catch(_){dl=null;}
+  try{
+    if(dl){await dl.save({filename,data:blob});e.style.color='var(--ok)';e.textContent='PDF guardado. Ya puedes subirlo a Classroom.';}
+    else{
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();
+      e.style.color='var(--ok)';e.textContent='Descarga iniciada. Si no aparece el archivo, avisa a tu profesor/a.';
+    }
+  }catch(err){
+    const c=err&&err.code;
+    e.style.color='var(--bad)';
+    e.textContent=c==='declined'?'Cancelaste la descarga. Pulsa de nuevo cuando quieras guardar el PDF.':'No se pudo guardar el PDF ('+(c||err.message||'error')+'). Inténtalo de nuevo.';
+  }
+}
+
+try{const l=JSON.parse(localStorage.getItem(SK+'last'));if(l){S.name=l.name||'';S.group=l.group||'';}}catch(e){}
+render();
+</script>
+</body>
+</html>
